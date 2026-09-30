@@ -58,13 +58,20 @@ namespace RotarNorte.Core
         private readonly RotationOptions _options;
         private readonly RotationReport _report;
 
+        /// <summary>Categorías sin geometría de modelo o que gestiona el propio add-in por otra vía: se omiten sin listarlas.</summary>
+        private static readonly HashSet<string> SilentCategoryNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "OST_Levels", "OST_ProjectBasePoint", "OST_SharedBasePoint", "OST_InternalOrigin", "OST_IOS_GeoSite",
+            "OST_Views", "OST_Sheets", "OST_Cameras", "OST_Viewports", "OST_Schedules", "OST_ProjectInformation",
+            "OST_Materials", "OST_SketchLines", "OST_Phases", "OST_SunPath", "OST_ColorFillLegends",
+            "OST_Legends", "OST_LegendComponents", "OST_LightingFixtureSource",
+            // Las cajas de sección de las vistas 3D se giran a través de View3D.SetSectionBox, nunca como elemento
+            "OST_SectionBox",
+        };
+
         private static readonly HashSet<string> ExcludedCategoryNames = new HashSet<string>(StringComparer.Ordinal)
         {
-            // No tienen sentido geométrico o los maneja el propio Revit
-            "OST_Levels", "OST_ProjectBasePoint", "OST_SharedBasePoint", "OST_Views", "OST_Sheets",
-            "OST_Cameras", "OST_Viewports", "OST_Schedules", "OST_ProjectInformation", "OST_Materials",
-            "OST_SketchLines", "OST_Constraints", "OST_LightingFixtureSource", "OST_Phases",
-            "OST_SunPath", "OST_ColorFillLegends", "OST_Legends", "OST_LegendComponents",
+            "OST_Constraints",
             // Piezas de muro cortina: se mueven con el muro / sistema
             "OST_CurtainWallPanels", "OST_CurtainWallMullions", "OST_CurtainGrids", "OST_CurtainGridsWall",
             "OST_CurtainGridsRoof", "OST_CurtainGridsSystem", "OST_CurtainGridsCurtaSystem",
@@ -180,9 +187,19 @@ namespace RotarNorte.Core
             if (e == null) return IgnoreSilently;
             if (e is ElementType) return IgnoreSilently;
 
+            // Todo lo que pertenece a una vista (componentes de leyenda, detalles...) no es geometría de modelo.
+            try
+            {
+                if (e.ViewSpecific) return IgnoreSilently;
+                if (e.OwnerViewId != null && e.OwnerViewId != ElementId.InvalidElementId) return IgnoreSilently;
+            }
+            catch { }
+
             // Clases que no se giran nunca
             if (e is View || e is ViewSheet || e is Viewport) return IgnoreSilently;
             if (e is BasePoint) return IgnoreSilently;
+            string typeName = e.GetType().Name;
+            if (typeName == "InternalOrigin" || typeName == "SectionBox" || typeName == "LegendComponent") return IgnoreSilently;
             if (e is Level) return IgnoreSilently;
             if (e is Sketch || e is SketchPlane) return IgnoreSilently;
             if (e is MEPSystem) return IgnoreSilently;
@@ -201,7 +218,8 @@ namespace RotarNorte.Core
             string bic = BuiltInName(cat);
             if (bic != null)
             {
-                if (ExcludedCategoryNames.Contains(bic)) return $"Categoría {cat.Name}: se mueve con su anfitrión o no aplica";
+                if (SilentCategoryNames.Contains(bic)) return IgnoreSilently;
+                if (ExcludedCategoryNames.Contains(bic)) return $"Categoría {cat.Name}: se mueve con su anfitrión";
                 if (bic.StartsWith("OST_IOS", StringComparison.Ordinal)
                     && bic != "OST_IOSModelGroups" && bic != "OST_IOSAttachedDetailGroups")
                     return IgnoreSilently;
