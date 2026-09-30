@@ -8,7 +8,7 @@ $proj = Join-Path $root "src\RotarNorte\RotarNorte.csproj"
 $dist = Join-Path $root "dist"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
-foreach ($v in "2022", "2023", "2024", "2025", "2026") {
+foreach ($v in "2022", "2023", "2024", "2025", "2026", "2027") {
     Write-Host "=== Revit $v" -ForegroundColor Cyan
     dotnet build $proj -c "R$v"
     if ($LASTEXITCODE -ne 0) { throw "Falló la compilación para Revit $v" }

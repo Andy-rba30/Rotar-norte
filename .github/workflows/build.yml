@@ -12,13 +12,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        revit: ["2022", "2023", "2024", "2025", "2026"]
+        revit: ["2022", "2023", "2024", "2025", "2026", "2027"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Compilar (Revit ${{ matrix.revit }})
         run: dotnet build src/RotarNorte/RotarNorte.csproj -c R${{ matrix.revit }}

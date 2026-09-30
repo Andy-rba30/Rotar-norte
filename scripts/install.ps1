@@ -3,13 +3,13 @@
   Compila e instala el add-in "Rotar Norte" para una versión de Revit.
 
 .EXAMPLE
-  .\scripts\install.ps1 -RevitVersion 2024
+  .\scripts\install.ps1 -RevitVersion 2027
   .\scripts\install.ps1 -RevitVersion 2025 -NoBuild      # solo copiar lo ya compilado
   .\scripts\install.ps1 -RevitVersion 2024 -Uninstall
 #>
 param(
-    [ValidateSet("2022", "2023", "2024", "2025", "2026")]
-    [string]$RevitVersion = "2024",
+    [ValidateSet("2022", "2023", "2024", "2025", "2026", "2027")]
+    [string]$RevitVersion = "2027",
     [switch]$NoBuild,
     [switch]$Uninstall
 )

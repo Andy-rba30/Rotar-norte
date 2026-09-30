@@ -1,6 +1,6 @@
 # Rotar Norte — rotación segura del Norte de Proyecto en Revit
 
-Add-in para Autodesk Revit (2022 a 2026) que gira el Norte de Proyecto **sin que desaparezcan
+Add-in para Autodesk Revit (2022 a 2027) que gira el Norte de Proyecto **sin que desaparezcan
 elementos, sin que se queden cosas sin girar y sin que las vistas pierdan su referencia**.
 
 ## El problema
@@ -81,8 +81,9 @@ forma recomendada de empezar en cualquier modelo grande.
 
 ### Requisitos
 
-- Revit 2022, 2023, 2024, 2025 o 2026 (Windows).
-- Para compilar: [SDK de .NET 8](https://dotnet.microsoft.com/download) o Visual Studio 2022.
+- Revit 2022, 2023, 2024, 2025, 2026 o 2027 (Windows).
+- Para compilar: [SDK de .NET 10](https://dotnet.microsoft.com/download) para Revit 2027
+  (SDK de .NET 8 para versiones anteriores) o Visual Studio 2022.
   No hace falta tener Revit instalado para compilar: el API se descarga de NuGet.
 
 ### Opción A: script (recomendada)
@@ -90,26 +91,26 @@ forma recomendada de empezar en cualquier modelo grande.
 ```powershell
 git clone https://github.com/Andy-rba30/Rotar-norte.git
 cd Rotar-norte
-.\scripts\install.ps1 -RevitVersion 2024
+.\scripts\install.ps1 -RevitVersion 2027
 ```
 
 Compila y copia `RotarNorte.dll` y `RotarNorte.addin` a
-`%APPDATA%\Autodesk\Revit\Addins\2024\`. Reinicie Revit y aparecerá la pestaña **Rotar Norte**.
-Para desinstalar: `.\scripts\install.ps1 -RevitVersion 2024 -Uninstall`.
+`%APPDATA%\Autodesk\Revit\Addins\2027\`. Reinicie Revit y aparecerá la pestaña **Rotar Norte**.
+Para desinstalar: `.\scripts\install.ps1 -RevitVersion 2027 -Uninstall`.
 
 ### Opción B: manual
 
 ```powershell
-dotnet build src\RotarNorte\RotarNorte.csproj -c R2024
+dotnet build src\RotarNorte\RotarNorte.csproj -c R2027
 ```
 
-Copie `src\RotarNorte\bin\R2024\RotarNorte.dll` a
-`%APPDATA%\Autodesk\Revit\Addins\2024\RotarNorte\` y `src\RotarNorte\RotarNorte.addin` a
-`%APPDATA%\Autodesk\Revit\Addins\2024\`. Cambie `R2024` y `2024` por su versión.
+Copie `src\RotarNorte\bin\R2027\RotarNorte.dll` a
+`%APPDATA%\Autodesk\Revit\Addins\2027\RotarNorte\` y `src\RotarNorte\RotarNorte.addin` a
+`%APPDATA%\Autodesk\Revit\Addins\2027\`. Cambie `R2027` y `2027` por su versión.
 
 ### Opción C: GitHub Actions
 
-Cada push compila el add-in en Windows para las cinco versiones y deja un artefacto
+Cada push compila el add-in en Windows para las seis versiones y deja un artefacto
 `RotarNorte_Revit20XX` descargable en la pestaña *Actions* del repositorio, con la estructura de
 carpetas lista para copiar en `%APPDATA%\Autodesk\Revit\Addins\20XX\`.
 
@@ -159,5 +160,6 @@ scripts/build-all.ps1                 Compilar para todas las versiones y empaqu
 .github/workflows/build.yml           Compilación en GitHub Actions
 ```
 
-Cada configuración de compilación (`R2022`…`R2026`) selecciona el paquete NuGet del API de Revit
-correspondiente y el framework adecuado (`net48` hasta 2024, `net8.0-windows` desde 2025).
+Cada configuración de compilación (`R2022`…`R2027`) selecciona el paquete NuGet del API de Revit
+correspondiente y el framework adecuado (`net48` hasta 2024, `net8.0-windows` en 2025 y 2026,
+`net10.0-windows` desde 2027).

@@ -2,19 +2,24 @@
 
   <!--
     Add-in "Rotar Norte" para Autodesk Revit.
-    Compilar con:  dotnet build -c R2024   (o R2022, R2023, R2025, R2026)
+    Compilar con:  dotnet build -c R2027   (o R2022, R2023, R2024, R2025, R2026)
     Cada configuración selecciona la versión del API de Revit (paquetes NuGet Nice3point.Revit.Api)
-    y el framework correspondiente (net48 hasta Revit 2024, net8.0-windows desde Revit 2025).
+    y el framework correspondiente (net48 hasta Revit 2024, net8.0-windows en 2025-2026,
+    net10.0-windows desde Revit 2027).
   -->
 
   <PropertyGroup>
-    <Configurations>R2022;R2023;R2024;R2025;R2026</Configurations>
+    <Configurations>R2022;R2023;R2024;R2025;R2026;R2027</Configurations>
     <Configuration Condition="'$(Configuration)' == ''">R2024</Configuration>
     <RevitVersion Condition="$(Configuration.StartsWith('R20'))">$(Configuration.Substring(1))</RevitVersion>
     <RevitVersion Condition="'$(RevitVersion)' == ''">2024</RevitVersion>
 
-    <TargetFramework Condition="$(RevitVersion) &gt;= 2025">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="$(RevitVersion) &gt;= 2027">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="$(RevitVersion) &gt;= 2025 and $(RevitVersion) &lt; 2027">net8.0-windows</TargetFramework>
     <TargetFramework Condition="$(RevitVersion) &lt; 2025">net48</TargetFramework>
+    <!-- Versión del pack de escritorio que corresponde al framework (solo para la verificación fuera de Windows) -->
+    <DesktopRefTfm Condition="$(RevitVersion) &gt;= 2027">net10.0</DesktopRefTfm>
+    <DesktopRefTfm Condition="$(RevitVersion) &lt; 2027">net8.0</DesktopRefTfm>
 
     <RootNamespace>RotarNorte</RootNamespace>
     <AssemblyName>RotarNorte</AssemblyName>
@@ -35,7 +40,7 @@
     <DebugType>portable</DebugType>
     <Optimize>true</Optimize>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <NoWarn>$(NoWarn);CS0618;CA1416</NoWarn>
+    <NoWarn>$(NoWarn);CS0618;CA1416;WFO1000</NoWarn>
   </PropertyGroup>
 
   <!-- Constantes por versión para ramas #if en el código -->
@@ -45,6 +50,7 @@
     <DefineConstants Condition="$(RevitVersion) &gt;= 2024">$(DefineConstants);REVIT2024_OR_GREATER</DefineConstants>
     <DefineConstants Condition="$(RevitVersion) &gt;= 2025">$(DefineConstants);REVIT2025_OR_GREATER</DefineConstants>
     <DefineConstants Condition="$(RevitVersion) &gt;= 2026">$(DefineConstants);REVIT2026_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="$(RevitVersion) &gt;= 2027">$(DefineConstants);REVIT2027_OR_GREATER</DefineConstants>
   </PropertyGroup>
 
   <!-- En Windows (compilación normal): WinForms + WPF a través del SDK de escritorio -->
@@ -71,16 +77,16 @@
     <Reference Include="WindowsBase" />
     <Reference Include="System.Xaml" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' == 'net8.0-windows'">
-    <PackageReference Include="Microsoft.WindowsDesktop.App.Ref" Version="8.0.*" ExcludeAssets="all" GeneratePathProperty="true" />
+  <ItemGroup Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' != 'net48'">
+    <PackageReference Include="Microsoft.WindowsDesktop.App.Ref" Version="$(DesktopRefTfm.Replace('net', '')).*" ExcludeAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
   <Target Name="RotarNorteLinuxDesktopRefs" BeforeTargets="ResolveAssemblyReferences"
-          Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' == 'net8.0-windows'">
+          Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' != 'net48'">
     <ItemGroup>
       <!-- Las fachadas WindowsBase/System.Drawing del pack base chocan con las del pack de escritorio -->
       <Reference Remove="@(Reference)"
                  Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('Microsoft.NETCore.App.Ref')) and ('%(Filename)' == 'WindowsBase' or '%(Filename)' == 'System.Drawing' or '%(Filename)' == 'Microsoft.VisualBasic')" />
-      <Reference Include="$(PkgMicrosoft_WindowsDesktop_App_Ref)/ref/net8.0/*.dll" />
+      <Reference Include="$(PkgMicrosoft_WindowsDesktop_App_Ref)/ref/$(DesktopRefTfm)/*.dll" Private="false" />
     </ItemGroup>
   </Target>
 
