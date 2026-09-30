@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Add-in "Rotar Norte" para Autodesk Revit.
+    Compilar con:  dotnet build -c R2024   (o R2022, R2023, R2025, R2026)
+    Cada configuración selecciona la versión del API de Revit (paquetes NuGet Nice3point.Revit.Api)
+    y el framework correspondiente (net48 hasta Revit 2024, net8.0-windows desde Revit 2025).
+  -->
+
+  <PropertyGroup>
+    <Configurations>R2022;R2023;R2024;R2025;R2026</Configurations>
+    <Configuration Condition="'$(Configuration)' == ''">R2024</Configuration>
+    <RevitVersion Condition="$(Configuration.StartsWith('R20'))">$(Configuration.Substring(1))</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2024</RevitVersion>
+
+    <TargetFramework Condition="$(RevitVersion) &gt;= 2025">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="$(RevitVersion) &lt; 2025">net48</TargetFramework>
+
+    <RootNamespace>RotarNorte</RootNamespace>
+    <AssemblyName>RotarNorte</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Rotar Norte</Authors>
+    <Description>Rota el Norte de Proyecto de Revit de forma segura, sin perder elementos ni vistas.</Description>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <IsWindowsHost>$([MSBuild]::IsOSPlatform('Windows'))</IsWindowsHost>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <DebugType>portable</DebugType>
+    <Optimize>true</Optimize>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS0618;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <!-- Constantes por versión para ramas #if en el código -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+    <DefineConstants Condition="$(RevitVersion) &gt;= 2023">$(DefineConstants);REVIT2023_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="$(RevitVersion) &gt;= 2024">$(DefineConstants);REVIT2024_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="$(RevitVersion) &gt;= 2025">$(DefineConstants);REVIT2025_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="$(RevitVersion) &gt;= 2026">$(DefineConstants);REVIT2026_OR_GREATER</DefineConstants>
+  </PropertyGroup>
+
+  <!-- En Windows (compilación normal): WinForms + WPF a través del SDK de escritorio -->
+  <PropertyGroup Condition="'$(IsWindowsHost)' == 'true'">
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- API de Revit desde NuGet (no requiere tener Revit instalado para compilar) -->
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+  </ItemGroup>
+
+  <!--
+    Fuera de Windows (solo para verificar que compila, p. ej. en CI Linux) el SDK de escritorio no
+    está disponible: se referencian directamente los ensamblados de referencia de WinForms/WPF.
+  -->
+  <ItemGroup Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' == 'net8.0-windows'">
+    <PackageReference Include="Microsoft.WindowsDesktop.App.Ref" Version="8.0.*" ExcludeAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+  <Target Name="RotarNorteLinuxDesktopRefs" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(IsWindowsHost)' != 'true' and '$(TargetFramework)' == 'net8.0-windows'">
+    <ItemGroup>
+      <!-- Las fachadas WindowsBase/System.Drawing del pack base chocan con las del pack de escritorio -->
+      <Reference Remove="@(Reference)"
+                 Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('Microsoft.NETCore.App.Ref')) and ('%(Filename)' == 'WindowsBase' or '%(Filename)' == 'System.Drawing' or '%(Filename)' == 'Microsoft.VisualBasic')" />
+      <Reference Include="$(PkgMicrosoft_WindowsDesktop_App_Ref)/ref/net8.0/*.dll" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.png" />
+    <None Include="RotarNorte.addin" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

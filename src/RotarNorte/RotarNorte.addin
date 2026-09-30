@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Rotar Norte</Name>
+    <Assembly>RotarNorte\RotarNorte.dll</Assembly>
+    <AddInId>7A3E1C52-9F0B-4C6D-B8E4-2D5A7F1E9C31</AddInId>
+    <FullClassName>RotarNorte.App</FullClassName>
+    <VendorId>RNRT</VendorId>
+    <VendorDescription>Rotar Norte - rotación segura del Norte de Proyecto</VendorDescription>
+  </AddIn>
+</RevitAddIns>

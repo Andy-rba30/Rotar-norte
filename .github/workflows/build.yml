@@ -1,0 +1,38 @@
+name: Compilar add-in
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        revit: ["2022", "2023", "2024", "2025", "2026"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compilar (Revit ${{ matrix.revit }})
+        run: dotnet build src/RotarNorte/RotarNorte.csproj -c R${{ matrix.revit }}
+
+      - name: Preparar paquete
+        shell: pwsh
+        run: |
+          $stage = "dist/RotarNorte_Revit${{ matrix.revit }}"
+          New-Item -ItemType Directory -Force -Path "$stage/RotarNorte" | Out-Null
+          Copy-Item "src/RotarNorte/bin/R${{ matrix.revit }}/RotarNorte.dll" "$stage/RotarNorte/"
+          Copy-Item "src/RotarNorte/bin/R${{ matrix.revit }}/RotarNorte.pdb" "$stage/RotarNorte/" -ErrorAction SilentlyContinue
+          Copy-Item "src/RotarNorte/RotarNorte.addin" "$stage/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RotarNorte_Revit${{ matrix.revit }}
+          path: dist/RotarNorte_Revit${{ matrix.revit }}

@@ -1,0 +1,15 @@
+# Build
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+*.swp
+
+# NuGet
+packages/
+*.nupkg
+
+# Local
+*.log
