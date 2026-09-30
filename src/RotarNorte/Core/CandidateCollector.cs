@@ -208,6 +208,7 @@ namespace RotarNorte.Core
             if (e is AssemblyInstance) return "Ensamblaje: sigue a sus miembros";
             if (e is ElevationMarker) return IgnoreSilently;     // se recogen aparte
             if (e is WallFoundation) return "Cimentación de muro: se mueve con el muro";
+            if (e is Autodesk.Revit.DB.Structure.StructuralConnectionHandler) return "Conexión de acero nativa: se mueve con la estructura";
             if (e is HostedSweep) return "Barrido anfitrionado: se mueve con su anfitrión";
             if (e is ColorFillLegend) return IgnoreSilently;
 
@@ -219,16 +220,23 @@ namespace RotarNorte.Core
             if (bic != null)
             {
                 if (SilentCategoryNames.Contains(bic)) return IgnoreSilently;
-                if (ExcludedCategoryNames.Contains(bic)) return $"Categoría {cat.Name}: se mueve con su anfitrión";
                 if (bic.StartsWith("OST_IOS", StringComparison.Ordinal)
                     && bic != "OST_IOSModelGroups" && bic != "OST_IOSAttachedDetailGroups")
                     return IgnoreSilently;
-                if (bic.StartsWith("OST_StructConnection", StringComparison.Ordinal))
-                    return "Conexión estructural: se mueve con la estructura";
-                if (bic.IndexOf("Analytical", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return "Modelo analítico: lo recalcula Revit";
-                if (bic.StartsWith("OST_Rebar", StringComparison.Ordinal))
-                    return "Armadura: se mueve con su anfitrión";
+
+                // Las exclusiones por categoría solo valen para elementos de sistema (barridos, tramos, armaduras,
+                // conexiones de acero nativas...). Una familia cargable de esas mismas categorías (por ejemplo una
+                // conexión "BIMS" en Structural Connections) es independiente y se decide por su anfitrión, más abajo.
+                if (!(e is FamilyInstance))
+                {
+                    if (ExcludedCategoryNames.Contains(bic)) return $"Categoría {cat.Name}: se mueve con su anfitrión";
+                    if (bic.StartsWith("OST_StructConnection", StringComparison.Ordinal))
+                        return "Conexión de acero nativa: se mueve con la estructura";
+                    if (bic.IndexOf("Analytical", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "Modelo analítico: lo recalcula Revit";
+                    if (bic.StartsWith("OST_Rebar", StringComparison.Ordinal))
+                        return "Armadura: se mueve con su anfitrión";
+                }
             }
 
             if (hostedIds.Contains(Compat.IdValue(e.Id)))
@@ -244,7 +252,7 @@ namespace RotarNorte.Core
                     if (fi.SuperComponent != null) return "Familia anidada: se mueve con su familia principal";
                     Element host = fi.Host;
                     if (host != null && !(host is Level) && !(host is ReferencePlane) && !(host is Grid))
-                        return $"Anfitrionado en {Compat.CategoryName(host)}: se mueve con su anfitrión";
+                        return $"Familia anfitrionada en {Compat.CategoryName(host)} [{Compat.IdValue(host.Id)}]: se mueve con su anfitrión";
                 }
                 catch { }
             }
