@@ -31,7 +31,8 @@ El botón **Rotar Norte de Proyecto** ejecuta, dentro de una única operación d
    mano: cotas, etiquetas y referencias se mantienen coherentes.
 4. Si Revit rechaza la operación, **aísla por bisección los elementos culpables** (en un grupo de
    transacciones que se deshace), los excluye, repite y los lista en el informe.
-5. Traslada **habitaciones, espacios y áreas** por su punto de ubicación.
+5. Recrea ya giradas las familias que Revit no permite girar (basadas en plano vertical) y
+   traslada **habitaciones, espacios y áreas** por su punto de ubicación.
 6. Ajusta las **vistas**: regiones de recorte de planta, cajas de sección y cámaras 3D, y
    recentra las ventanas gráficas en los planos para que la maquetación no se mueva.
 7. Corrige el **ángulo a Norte Verdadero** para que las coordenadas compartidas de todo el
@@ -74,6 +75,12 @@ forma recomendada de empezar en cualquier modelo grande.
   los emplazamientos del proyecto.
 - **Desanclar temporalmente**: si se desactiva, lo anclado no se gira y se lista como omitido.
 - **Girar anotaciones / secciones y alzados / vistas 3D**: normalmente todo activado.
+- **Recrear giradas las familias que Revit no permite girar**: las familias basadas en cara o en
+  plano de trabajo vertical o inclinado (por ejemplo conexiones colocadas en la cara de una viga y
+  sin anfitrión) producen el error *"Can't rotate element into this position"* al girarlas en
+  planta, también a mano. El add-in las copia con la transformación de giro, como "Pegar
+  alineado", y borra la original. Conservan sus parámetros y su anclaje, pero **cambian de Id**
+  (se pierden sus etiquetas si las tenían). Si se desactiva, se dejan en su sitio y se listan.
 - **Si Revit informa de errores**: *Cancelar todo* (recomendado) o *aplicar la resolución
   automática de Revit* (puede borrar elementos, como haría Revit en el diálogo de errores).
 

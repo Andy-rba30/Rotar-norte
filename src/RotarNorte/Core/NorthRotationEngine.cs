@@ -232,17 +232,27 @@ namespace RotarNorte.Core
             {
                 _progress("Revit rechazó la rotación en bloque; aislando elementos problemáticos...");
                 _report.UsedElementByElementFallback = true;
-                Dictionary<long, string> culprits = IsolateCulprits(bulk);
-                if (culprits == null)
+                Dictionary<long, string> culprits = IsolateCulprits(bulk, out bool tooMany);
+                var culpritSet = new HashSet<long>(culprits.Keys);
+
+                // Las familias culpables se pueden recrear giradas; el resto se informa.
+                var recreatable = new List<ElementId>();
+                foreach (var kv in culprits)
                 {
-                    _report.AbortReason = $"Demasiados elementos problemáticos (más de {_options.MaxIsolatedFailures}). " +
-                                          "Revise el informe de la simulación y corrija el modelo antes de girar. " + LastErrors();
-                    return false;
+                    Element c = _doc.GetElement(Compat.MakeId(kv.Key));
+                    if (_options.RecreateUnrotatableFamilies && c is FamilyInstance && !tooMany)
+                        recreatable.Add(c.Id);
+                    else
+                        _report.Fail(kv.Key, Compat.Describe(c), "Revit no permitió girarlo: " + kv.Value);
                 }
 
-                var culpritSet = new HashSet<long>(culprits.Keys);
-                foreach (var kv in culprits)
-                    _report.Fail(kv.Key, Compat.Describe(_doc.GetElement(Compat.MakeId(kv.Key))), "Revit no permitió girarlo: " + kv.Value);
+                if (tooMany)
+                {
+                    _report.AbortReason = $"Demasiados elementos problemáticos (más de {_options.MaxIsolatedFailures}); los encontrados se listan abajo. " +
+                                          "Ejecute una simulación, revise esos elementos (o su familia) y vuelva a intentarlo. " + LastErrors();
+                    return false;
+                }
+                set.Unrotatable.AddRange(recreatable);
 
                 bulk = bulk.Where(id => !culpritSet.Contains(Compat.IdValue(id))).ToList();
                 _progress($"Girando {bulk.Count} elementos (sin los problemáticos)...");
@@ -254,7 +264,27 @@ namespace RotarNorte.Core
             }
             CountRotated(bulk, set);
 
-            // 4. Secciones que necesitan el respaldo por caja de recorte
+            // 4. Familias que Revit no permite girar: recrearlas giradas
+            if (set.Unrotatable.Count > 0)
+            {
+                if (_options.RecreateUnrotatableFamilies)
+                {
+                    _progress($"Recreando {set.Unrotatable.Count} familias que no admiten giro...");
+                    if (!RunTransaction("Recrear familias giradas", () => RecreateRotated(set)))
+                    {
+                        _report.AbortReason = "No se pudieron recrear las familias que no admiten giro. " + LastErrors();
+                        return false;
+                    }
+                }
+                else
+                {
+                    foreach (ElementId id in set.Unrotatable)
+                        _report.Fail(Compat.IdValue(id), Compat.Describe(_doc.GetElement(id)),
+                            "Familia basada en plano vertical/inclinado: Revit no permite girarla (opción de recrear desactivada)");
+                }
+            }
+
+            // 5. Secciones que necesitan el respaldo por caja de recorte
             var viewRotator = new ViewRotator(_doc, _options, _report, _rot);
             if (sectionsForFallback.Count > 0)
             {
@@ -271,7 +301,7 @@ namespace RotarNorte.Core
                 });
             }
 
-            // 5. Habitaciones, espacios y áreas
+            // 6. Habitaciones, espacios y áreas
             if (set.Spatial.Count > 0)
             {
                 _progress($"Trasladando {set.Spatial.Count} habitaciones/espacios/áreas...");
@@ -297,7 +327,7 @@ namespace RotarNorte.Core
                 });
             }
 
-            // 6. Vistas
+            // 7. Vistas
             _progress("Ajustando vistas de planta, 3D y planos...");
             var viewIds = new List<ElementId>(set.PlanViews);
             viewIds.AddRange(set.SectionViews);
@@ -317,7 +347,7 @@ namespace RotarNorte.Core
                 return false;
             }
 
-            // 7. Norte Verdadero / coordenadas compartidas
+            // 8. Norte Verdadero / coordenadas compartidas
             if (_options.PreserveTrueNorth)
             {
                 _progress("Corrigiendo el ángulo a Norte Verdadero...");
@@ -333,7 +363,7 @@ namespace RotarNorte.Core
                 _report.TrueNorthAfter = _report.TrueNorthBefore;
             }
 
-            // 8. Volver a anclar
+            // 9. Volver a anclar
             if (set.Pinned.Count > 0)
             {
                 _progress("Volviendo a anclar elementos...");
@@ -382,8 +412,9 @@ namespace RotarNorte.Core
         /// Cada intento se ejecuta en un grupo de transacciones que se deshace, así el modelo queda intacto.
         /// Devuelve null si hay más culpables que el máximo permitido.
         /// </summary>
-        private Dictionary<long, string> IsolateCulprits(List<ElementId> ids)
+        private Dictionary<long, string> IsolateCulprits(List<ElementId> ids, out bool tooMany)
         {
+            tooMany = false;
             var culprits = new Dictionary<long, string>();
             var pending = new Stack<List<ElementId>>();
             pending.Push(ids);
@@ -407,7 +438,7 @@ namespace RotarNorte.Core
                 if (chunk.Count == 1)
                 {
                     culprits[Compat.IdValue(chunk[0])] = LastErrorsShort();
-                    if (culprits.Count > _options.MaxIsolatedFailures) return null;
+                    if (culprits.Count > _options.MaxIsolatedFailures) { tooMany = true; return culprits; }
                     continue;
                 }
 
@@ -417,6 +448,48 @@ namespace RotarNorte.Core
             }
 
             return culprits;
+        }
+
+        /// <summary>
+        /// Copia las familias con la transformación de giro (como "Pegar alineado") y borra las originales.
+        /// Cambian de Id; se conserva el anclaje y todos los parámetros de ejemplar.
+        /// </summary>
+        private void RecreateRotated(CandidateSet set)
+        {
+            var pinned = new HashSet<long>(set.Pinned.Select(Compat.IdValue));
+            var toDelete = new List<ElementId>();
+
+            foreach (ElementId id in set.Unrotatable)
+            {
+                Element original = _doc.GetElement(id);
+                if (original == null) continue;
+                try
+                {
+                    ICollection<ElementId> copies = ElementTransformUtils.CopyElements(
+                        _doc, new[] { id }, _doc, _rot, new CopyPasteOptions());
+                    if (copies == null || copies.Count == 0)
+                    {
+                        _report.Fail(Compat.IdValue(id), Compat.Describe(original), "No se pudo recrear girada (la copia no devolvió elementos)");
+                        continue;
+                    }
+                    if (pinned.Contains(Compat.IdValue(id)))
+                        foreach (ElementId c in copies) { try { _doc.GetElement(c).Pinned = true; } catch { } }
+
+                    toDelete.Add(id);
+                    _report.FamiliesRecreated++;
+                    _report.CountCategory(Compat.CategoryName(original));
+                }
+                catch (Exception ex)
+                {
+                    _report.Fail(Compat.IdValue(id), Compat.Describe(original), "No se pudo recrear girada: " + ex.Message);
+                }
+            }
+
+            if (toDelete.Count > 0)
+            {
+                _doc.Delete(toDelete);
+                _report.Notes.Add($"{toDelete.Count} familias basadas en plano vertical/inclinado se recrearon giradas y tienen un Id nuevo (sus etiquetas, si las había, se pierden).");
+            }
         }
 
         private void CountRotated(List<ElementId> bulk, CandidateSet set)
@@ -524,6 +597,7 @@ namespace RotarNorte.Core
             set.SectionViews.RemoveAll(id => notOwned.Contains(Compat.IdValue(id)));
             set.ElevationMarkers.RemoveAll(id => notOwned.Contains(Compat.IdValue(id)));
             set.Spatial.RemoveAll(id => notOwned.Contains(Compat.IdValue(id)));
+            set.Unrotatable.RemoveAll(id => notOwned.Contains(Compat.IdValue(id)));
             set.Pinned.RemoveAll(id => notOwned.Contains(Compat.IdValue(id)));
             _report.Warnings.Add($"{notOwned.Count} elementos pertenecen a otros usuarios y no se giraron.");
             return true;

@@ -26,6 +26,7 @@ namespace RotarNorte.Core
 
         public int ModelElementsRotated { get; set; }
         public int AnnotationsRotated { get; set; }
+        public int FamiliesRecreated { get; set; }
         public int PinnedRestored { get; set; }
         public int PlanViewsRotated { get; set; }
         public int PlanViewsRefit { get; set; }
@@ -90,6 +91,7 @@ namespace RotarNorte.Core
             sb.AppendLine("RESUMEN");
             sb.AppendLine($"  Elementos de modelo girados: {ModelElementsRotated}");
             sb.AppendLine($"  Anotaciones de planta giradas: {AnnotationsRotated}");
+            sb.AppendLine($"  Familias recreadas giradas (nuevo Id): {FamiliesRecreated}");
             sb.AppendLine($"  Elementos desanclados y vueltos a anclar: {PinnedRestored}");
             sb.AppendLine($"  Vistas de planta (recorte girado con el modelo): {PlanViewsRotated}");
             sb.AppendLine($"  Vistas de planta (recorte reajustado): {PlanViewsRefit}");

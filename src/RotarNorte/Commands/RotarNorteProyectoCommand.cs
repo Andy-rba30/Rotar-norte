@@ -98,7 +98,8 @@ namespace RotarNorte.Commands
                 return $"Se girarán aproximadamente {set.Model.Count + set.Spatial.Count} elementos de modelo, {set.Annotations.Count} anotaciones, " +
                        $"{set.SectionViews.Count} secciones y {set.ElevationMarkers.Count} marcas de alzado; " +
                        $"se ajustarán {set.PlanViews.Count} vistas de planta y {set.Views3D.Count} vistas 3D. " +
-                       $"{set.Pinned.Count} elementos anclados se desanclarán temporalmente." +
+                       $"{set.Pinned.Count} elementos anclados se desanclarán temporalmente. " +
+                       $"{set.Unrotatable.Count} familias basadas en plano vertical/inclinado se recrearán giradas." +
                        (doc.IsWorkshared ? " El modelo es de trabajo compartido: se solicitará la propiedad de los elementos." : "");
             }
             catch (Exception ex)

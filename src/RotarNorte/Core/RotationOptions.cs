@@ -55,6 +55,13 @@ namespace RotarNorte.Core
         /// <summary>Gira las cajas de sección y las cámaras de las vistas 3D.</summary>
         public bool Rotate3DViews { get; set; } = true;
 
+        /// <summary>
+        /// Familias basadas en cara o en plano de trabajo vertical/inclinado que Revit no permite girar en planta
+        /// ("Can't rotate element into this position"): si es true se recrean ya giradas (copia con transformación
+        /// y borrado de la original, con lo que cambian de Id); si es false se dejan en su sitio y se listan.
+        /// </summary>
+        public bool RecreateUnrotatableFamilies { get; set; } = true;
+
         /// <summary>Si es true, se hace todo el trabajo y luego se deshace: sirve para auditar sin tocar el modelo.</summary>
         public bool DryRun { get; set; }
 

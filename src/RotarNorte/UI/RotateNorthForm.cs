@@ -21,7 +21,7 @@ namespace RotarNorte.UI
         private readonly RadioButton _centerPbp, _centerOrigin, _centerSurvey, _centerCustom;
         private readonly Label _customCenterLabel;
         private readonly RadioButton _planKeep, _planShow;
-        private readonly CheckBox _preserveTrueNorth, _unpin, _annotations, _sections, _views3d, _dryRun;
+        private readonly CheckBox _preserveTrueNorth, _unpin, _annotations, _sections, _views3d, _recreate, _dryRun;
         private readonly RadioButton _errorsCancel, _errorsResolve;
         private readonly Label _preview;
 
@@ -99,14 +99,15 @@ namespace RotarNorte.UI
             y += 126;
 
             // ---- Opciones
-            var gOpt = new GroupBox { Text = "Opciones", Location = new Point(12, y), Size = new Size(576, 150) };
+            var gOpt = new GroupBox { Text = "Opciones", Location = new Point(12, y), Size = new Size(576, 174) };
             _preserveTrueNorth = new CheckBox { Text = "Mantener el Norte Verdadero y las coordenadas compartidas (ajusta el ángulo a Norte Verdadero)", Location = new Point(12, 22), AutoSize = true, Checked = true };
             _unpin = new CheckBox { Text = "Desanclar temporalmente los elementos anclados (vínculos, DWG, rejillas...) y volver a anclarlos", Location = new Point(12, 46), AutoSize = true, Checked = true };
             _annotations = new CheckBox { Text = "Girar las anotaciones de las vistas de planta (textos, cotas, etiquetas, líneas de detalle, DWG de vista)", Location = new Point(12, 70), AutoSize = true, Checked = true };
             _sections = new CheckBox { Text = "Girar marcas de sección, llamadas de detalle y marcas de alzado", Location = new Point(12, 94), AutoSize = true, Checked = true };
             _views3d = new CheckBox { Text = "Girar cajas de sección y cámaras de las vistas 3D", Location = new Point(12, 118), AutoSize = true, Checked = true };
-            gOpt.Controls.AddRange(new Control[] { _preserveTrueNorth, _unpin, _annotations, _sections, _views3d });
-            y += 158;
+            _recreate = new CheckBox { Text = "Recrear giradas (con nuevo Id) las familias que Revit no permite girar: basadas en cara o plano vertical", Location = new Point(12, 142), AutoSize = true, Checked = true };
+            gOpt.Controls.AddRange(new Control[] { _preserveTrueNorth, _unpin, _annotations, _sections, _views3d, _recreate });
+            y += 182;
 
             // ---- Seguridad
             var gSafe = new GroupBox { Text = "Seguridad", Location = new Point(12, y), Size = new Size(576, 100) };
@@ -176,6 +177,7 @@ namespace RotarNorte.UI
             o.RotatePlanAnnotations = _annotations.Checked;
             o.RotateSectionsAndElevations = _sections.Checked;
             o.Rotate3DViews = _views3d.Checked;
+            o.RecreateUnrotatableFamilies = _recreate.Checked;
             o.DryRun = _dryRun.Checked;
             o.AutoResolveErrors = _errorsResolve.Checked;
         }
@@ -194,6 +196,7 @@ namespace RotarNorte.UI
             _annotations.Checked = o.RotatePlanAnnotations;
             _sections.Checked = o.RotateSectionsAndElevations;
             _views3d.Checked = o.Rotate3DViews;
+            _recreate.Checked = o.RecreateUnrotatableFamilies;
             _dryRun.Checked = o.DryRun;
             _errorsCancel.Checked = !o.AutoResolveErrors;
             _errorsResolve.Checked = o.AutoResolveErrors;

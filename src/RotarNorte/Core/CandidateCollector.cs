@@ -26,6 +26,12 @@ namespace RotarNorte.Core
         /// <summary>Habitaciones, espacios y áreas: se trasladan por su punto de ubicación.</summary>
         public readonly List<ElementId> Spatial = new List<ElementId>();
 
+        /// <summary>
+        /// Familias basadas en plano de trabajo vertical o inclinado, sin anfitrión: Revit no permite girarlas
+        /// alrededor de un eje vertical, así que se recrean ya giradas.
+        /// </summary>
+        public readonly List<ElementId> Unrotatable = new List<ElementId>();
+
         /// <summary>Elementos que estaban anclados y hay que volver a anclar.</summary>
         public readonly List<ElementId> Pinned = new List<ElementId>();
 
@@ -35,11 +41,12 @@ namespace RotarNorte.Core
         /// <summary>Vistas 3D a procesar (caja de sección y cámara).</summary>
         public readonly List<ElementId> Views3D = new List<ElementId>();
 
-        public int TotalToRotate => Model.Count + Annotations.Count + SectionViews.Count + ElevationMarkers.Count + Spatial.Count;
+        public int TotalToRotate => Model.Count + Annotations.Count + SectionViews.Count + ElevationMarkers.Count + Spatial.Count + Unrotatable.Count;
 
         public IEnumerable<ElementId> AllRotatable()
         {
             foreach (var id in Model) yield return id;
+            foreach (var id in Unrotatable) yield return id;
             foreach (var id in Annotations) yield return id;
             foreach (var id in SectionViews) yield return id;
             foreach (var id in ElevationMarkers) yield return id;
@@ -174,6 +181,8 @@ namespace RotarNorte.Core
 
                 if (e is SpatialElement)
                     set.Spatial.Add(e.Id);
+                else if (IsUnrotatableAboutZ(e))
+                    set.Unrotatable.Add(e.Id);
                 else
                     set.Model.Add(e.Id);
             }
@@ -286,6 +295,24 @@ namespace RotarNorte.Core
             if (bb == null && e.Location == null) return IgnoreSilently;
 
             return null;
+        }
+
+        /// <summary>
+        /// Familia basada en plano de trabajo cuyo plano no es horizontal (por ejemplo una conexión colocada en la
+        /// cara vertical de una viga y sin anfitrión): Revit rechaza girarla en planta con
+        /// "Can't rotate element into this position".
+        /// </summary>
+        private static bool IsUnrotatableAboutZ(Element e)
+        {
+            if (!(e is FamilyInstance fi)) return false;
+            try
+            {
+                Family fam = fi.Symbol?.Family;
+                if (fam == null || fam.FamilyPlacementType != FamilyPlacementType.WorkPlaneBased) return false;
+                XYZ up = fi.GetTransform().BasisZ;
+                return Math.Abs(up.Z) < 0.999;
+            }
+            catch { return false; }
         }
 
         private static string BuiltInName(Category cat)
